@@ -63,6 +63,30 @@ wespoke.on('message', (message) => {
 await wespoke.endCall();
 ```
 
+## Running Examples
+
+The package includes ready-to-run example applications in the `examples/` directory:
+
+### Vanilla JavaScript Example
+
+Pure HTML/CSS/JavaScript - no build tools required.
+
+```bash
+cd node_modules/@wespoke/web-sdk/examples/vanilla-js-example
+python3 -m http.server 8080
+# Open http://localhost:8080
+```
+
+### React Example
+
+Modern React app with TypeScript and custom `useWespoke` hook.
+
+```bash
+cd node_modules/@wespoke/web-sdk/examples/react-example
+npm install
+npm run dev
+```
+
 ## API Reference
 
 ### Constructor

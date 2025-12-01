@@ -1,0 +1,9 @@
+# Exclude node_modules from examples
+examples/*/node_modules
+examples/*/.vite
+examples/*/package-lock.json
+examples/*/dist
+
+# Development files
+*.log
+.DS_Store

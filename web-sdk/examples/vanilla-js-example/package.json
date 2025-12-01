@@ -1,0 +1,23 @@
+{
+  "name": "wespoke-sdk-vanilla-js-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vanilla JavaScript example for Wespoke Web SDK",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8080",
+    "serve": "python3 -m http.server 8080"
+  },
+  "dependencies": {
+    "@wespoke/web-sdk": "file:../web-sdk"
+  },
+  "keywords": [
+    "wespoke",
+    "vanilla-js",
+    "example",
+    "web-sdk",
+    "voice-assistant"
+  ],
+  "author": "Wespoke",
+  "license": "MIT"
+}
