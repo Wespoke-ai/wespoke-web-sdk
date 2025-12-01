@@ -1,6 +1,6 @@
 {
   "name": "@wespoke/web-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official JavaScript SDK for embedding Wespoke AI voice assistants in any website",
   "main": "dist/wespoke.cjs.js",
   "module": "dist/wespoke.esm.js",
@@ -41,7 +41,7 @@
   "bugs": {
     "url": "https://github.com/Wespoke-ai/wespoke-web-sdk/issues"
   },
-  "homepage": "https://wespoke.com.tr",
+  "homepage": "https://wespoke.ai",
   "dependencies": {
     "livekit-client": "^2.6.0"
   },
