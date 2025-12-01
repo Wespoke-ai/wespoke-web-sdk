@@ -145,7 +145,7 @@ function App() {
               type="text"
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
-              placeholder="https://api.wespoke.com.tr"
+              placeholder="https://api.wespoke.ai"
             />
           </div>
 
