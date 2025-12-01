@@ -9,7 +9,7 @@ Official JavaScript SDK for embedding Wespoke AI voice assistants in any website
 
 - 🎤 **Real-time Voice Communication** - Powered by LiveKit WebRTC
 - 🔒 **Secure Authentication** - API key-based with domain whitelisting
-- 📱 **Framework Agnostic** - Works with React, Vue, Angular, or vanilla JavaScript
+- 📱 **Framework Agnostic** - Works with React, Angular, or vanilla JavaScript
 - 🎯 **TypeScript Support** - Full type definitions included
 - 🔧 **Easy Integration** - Simple API with comprehensive examples
 - 📊 **Event-Driven** - Real-time events for connection state, messages, and errors
@@ -93,15 +93,6 @@ npm install
 npm run dev
 ```
 
-### [Vue 3](./vue-example)
-Vue 3 app with TypeScript and `useWespoke` composable.
-
-```bash
-cd vue-example
-npm install
-npm run dev
-```
-
 ## API Reference
 
 ### Constructor
@@ -137,13 +128,6 @@ Toggle microphone mute state. Returns new mute state.
 
 ```javascript
 const isMuted = await wespoke.toggleMute();
-```
-
-#### `sendMessage(text: string): Promise<void>`
-Send a text message during the call.
-
-```javascript
-await wespoke.sendMessage('Hello!');
 ```
 
 #### `destroy(): void>`
@@ -231,7 +215,6 @@ npm run dev  # Watch mode with auto-rebuild
 wespoke-web-sdk/
 ├── web-sdk/              # Core SDK package
 ├── react-example/        # React example app
-├── vue-example/          # Vue example app
 ├── vanilla-js-example/   # Vanilla JS example
 └── package.json          # Workspace configuration
 ```
