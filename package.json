@@ -1,0 +1,25 @@
+{
+  "name": "@wespoke/monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wespoke SDK and examples monorepo",
+  "workspaces": [
+    "web-sdk",
+    "react-example",
+    "vue-example",
+    "vanilla-js-example"
+  ],
+  "scripts": {
+    "build:sdk": "npm run build --workspace=web-sdk",
+    "build:all": "npm run build --workspaces --if-present",
+    "dev:react": "npm run dev --workspace=react-example",
+    "dev:vue": "npm run dev --workspace=vue-example",
+    "test:sdk": "npm test --workspace=web-sdk",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

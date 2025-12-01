@@ -1,0 +1,22 @@
+{
+  "name": "wespoke-sdk-vue-example",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Vue 3 example application for Wespoke Web SDK",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@wespoke/web-sdk": "file:../web-sdk",
+    "vue": "^3.3.11"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "vue-tsc": "^1.8.25"
+  }
+}
