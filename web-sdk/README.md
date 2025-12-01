@@ -32,7 +32,7 @@ yarn add @wespoke/web-sdk
 
 ### 1. Get Your API Key
 
-1. Log in to your [Wespoke Dashboard](https://wespoke.com.tr/dashboard)
+1. Log in to your [Wespoke Dashboard](https://wespoke.ai/dashboard)
 2. Navigate to **Web Embedding**
 3. Create a new API key with your domain whitelist
 4. Copy your `pk_live_xxx` or `pk_test_xxx` key
@@ -76,7 +76,7 @@ new Wespoke(config: WespokeConfig)
 ```typescript
 interface WespokeConfig {
   apiKey: string;           // Required: Your API key (pk_live_xxx)
-  apiUrl?: string;          // Optional: API endpoint (default: 'https://api.wespoke.com.tr')
+  apiUrl?: string;          // Optional: API endpoint (default: 'https://api.wespoke.ai')
   debug?: boolean;          // Optional: Enable debug logging (default: false)
   maxRetryAttempts?: number; // Optional: Connection retry attempts (default: 3)
   retryDelay?: number;      // Optional: Retry delay in ms (default: 2000)
@@ -475,6 +475,4 @@ MIT
 
 ## Support
 
-- Documentation: https://docs.wespoke.com.tr
-- Email: support@wespoke.com.tr
-- Dashboard: https://wespoke.com.tr/dashboard
+- 🐛 [Issue Tracker](https://github.com/Wespoke-ai/wespoke-web-sdk/issues)

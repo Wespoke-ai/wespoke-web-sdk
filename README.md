@@ -39,7 +39,7 @@ yarn add @wespoke/web-sdk
 
 ### 1. Get Your API Credentials
 
-1. Sign up at [Wespoke Dashboard](https://wespoke.com.tr)
+1. Sign up at [Wespoke Dashboard](https://wespoke.ai)
 2. Create a new Web Embedding API key
 3. Add your domain to the allowed origins list
 4. Copy your API key (starts with `pk_`)
@@ -53,7 +53,7 @@ import { Wespoke } from '@wespoke/web-sdk';
 const wespoke = new Wespoke({
   apiKey: 'pk_your_api_key_here',
   assistantId: 'your_assistant_id',
-  apiUrl: 'https://api.wespoke.com.tr' // optional
+  apiUrl: 'https://api.wespoke.ai' // optional
 });
 
 // Listen to events
@@ -104,7 +104,7 @@ new Wespoke(config: WespokeConfig)
 **Config Options:**
 - `apiKey` (required): Your Wespoke API key
 - `assistantId` (required): ID of the assistant to use
-- `apiUrl` (optional): Custom API URL (default: 'https://api.wespoke.com.tr')
+- `apiUrl` (optional): Custom API URL (default: 'https://api.wespoke.ai')
 - `debug` (optional): Enable debug logging (default: false)
 
 ### Methods
@@ -241,9 +241,6 @@ wespoke-web-sdk/
 
 ## Support
 
-- 📖 [Documentation](https://docs.wespoke.com.tr)
-- 💬 [Discord Community](https://discord.gg/wespoke)
-- 📧 Email: support@wespoke.com.tr
 - 🐛 [Issue Tracker](https://github.com/Wespoke-ai/wespoke-web-sdk/issues)
 
 ## License
