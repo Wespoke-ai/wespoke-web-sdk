@@ -35,11 +35,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tahabebek/wespoke.git",
-    "directory": "packages/web-sdk"
+    "url": "https://github.com/Wespoke-ai/wespoke-web-sdk.git",
+    "directory": "web-sdk"
   },
   "bugs": {
-    "url": "https://github.com/tahabebek/wespoke/issues"
+    "url": "https://github.com/Wespoke-ai/wespoke-web-sdk/issues"
   },
   "homepage": "https://wespoke.com.tr",
   "dependencies": {
