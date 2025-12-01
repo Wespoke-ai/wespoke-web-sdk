@@ -151,14 +151,6 @@ Get current call ID.
 const callId = wespoke.getCallId();
 ```
 
-#### `sendMessage(message)`
-
-Send a text message to the assistant.
-
-```typescript
-wespoke.sendMessage('Hello, how are you?');
-```
-
 #### `destroy()`
 
 Destroy the SDK instance and clean up resources.
