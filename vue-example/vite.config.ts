@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@wespoke/web-sdk': '../../dist/wespoke.esm.js'
+      '@wespoke/web-sdk': '../web-sdk/dist/wespoke.esm.js'
     }
   }
 })

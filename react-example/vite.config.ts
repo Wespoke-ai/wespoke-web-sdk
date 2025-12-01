@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@wespoke/web-sdk': path.resolve(__dirname, '../../dist/wespoke.esm.js')
+      '@wespoke/web-sdk': path.resolve(__dirname, '../web-sdk/dist/wespoke.esm.js')
     }
   }
 })
