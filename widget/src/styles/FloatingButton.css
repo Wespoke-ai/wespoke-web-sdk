@@ -1,0 +1,222 @@
+/* Wespoke Widget - Floating Action Button */
+
+.wespoke-fab {
+  position: fixed;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+              0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: var(--wespoke-widget-z-index, 9999);
+  outline: none;
+  overflow: visible;
+}
+
+/* Position variants */
+.wespoke-fab-bottom-right {
+  bottom: 24px;
+  right: 24px;
+}
+
+.wespoke-fab-bottom-left {
+  bottom: 24px;
+  left: 24px;
+}
+
+.wespoke-fab-top-right {
+  top: 24px;
+  right: 24px;
+}
+
+.wespoke-fab-top-left {
+  top: 24px;
+  left: 24px;
+}
+
+/* Hover state */
+.wespoke-fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4),
+              0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Active/pressed state */
+.wespoke-fab:active {
+  transform: scale(0.95);
+}
+
+/* Focus state (keyboard navigation) */
+.wespoke-fab:focus {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+/* Open state */
+.wespoke-fab-open {
+  transform: rotate(90deg);
+}
+
+.wespoke-fab-open:hover {
+  transform: rotate(90deg) scale(1.05);
+}
+
+/* Active call state - adds subtle pulse animation */
+.wespoke-fab-active {
+  animation: wespoke-fab-breathe 2s ease-in-out infinite;
+}
+
+@keyframes wespoke-fab-breathe {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+                0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4),
+                0 3px 12px rgba(0, 0, 0, 0.3),
+                0 0 24px rgba(109, 179, 176, 0.4);
+  }
+}
+
+/* Icon container */
+.wespoke-fab-icon {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  color: white;
+  transition: transform 0.3s ease;
+}
+
+.wespoke-fab-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Badge for notifications */
+.wespoke-fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  padding: 0 6px;
+  border: 2px solid #0f172a; /* Dark background color */
+  animation: wespoke-badge-pop 0.3s ease;
+}
+
+@keyframes wespoke-badge-pop {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Pulse animation for active call */
+.wespoke-fab-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid;
+  animation: wespoke-pulse 1.5s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes wespoke-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .wespoke-fab {
+    width: 56px;
+    height: 56px;
+  }
+
+  .wespoke-fab-bottom-right,
+  .wespoke-fab-bottom-left,
+  .wespoke-fab-top-right,
+  .wespoke-fab-top-left {
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .wespoke-fab-bottom-left,
+  .wespoke-fab-top-left {
+    left: 16px;
+    right: auto;
+  }
+
+  .wespoke-fab-top-right,
+  .wespoke-fab-top-left {
+    top: 16px;
+    bottom: auto;
+  }
+
+  .wespoke-fab-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .wespoke-fab-pulse {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+/* Accessibility - reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .wespoke-fab,
+  .wespoke-fab-icon,
+  .wespoke-fab-badge {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .wespoke-fab-pulse {
+    display: none;
+  }
+}
+
+/* Dark mode support (if parent has dark mode class) */
+.dark .wespoke-fab-badge {
+  border-color: #1e293b;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .wespoke-fab {
+    border-width: 3px;
+  }
+
+  .wespoke-fab:focus {
+    outline-width: 3px;
+  }
+}

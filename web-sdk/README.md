@@ -281,7 +281,6 @@ import {
   WespokeError,
   AuthenticationError,
   InsufficientCreditsError,
-  RateLimitError,
   ConnectionError,
   ConfigurationError,
   AssistantNotFoundError,
@@ -295,10 +294,10 @@ try {
     console.error('Invalid API key or domain not whitelisted');
   } else if (error instanceof InsufficientCreditsError) {
     console.error('Insufficient credits to start call');
-  } else if (error instanceof RateLimitError) {
-    console.error('Rate limit exceeded. Retry after:', error.retryAfter);
   } else if (error instanceof MediaDevicesError) {
     console.error('Microphone access denied');
+  } else if (error instanceof ConnectionError) {
+    console.error('Connection failed:', error.message);
   }
 }
 ```
@@ -453,16 +452,6 @@ function VoiceAssistant() {
 - Safari: 14+
 - Mobile Safari: 14+
 - Chrome Android: 90+
-
-## Rate Limits
-
-- **Per API Key**: 100 requests per hour
-- **Per User**: 1,000 requests per hour
-
-Rate limit information is returned in the response headers:
-- `X-RateLimit-Limit`: Maximum requests allowed
-- `X-RateLimit-Remaining`: Requests remaining
-- `X-RateLimit-Reset`: When the limit resets (ISO 8601 timestamp)
 
 ## Troubleshooting
 

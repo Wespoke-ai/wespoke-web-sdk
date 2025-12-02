@@ -1,6 +1,6 @@
 {
   "name": "@wespoke/web-sdk",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Official JavaScript SDK for embedding Wespoke AI voice assistants in any website",
   "main": "dist/wespoke.cjs.js",
   "module": "dist/wespoke.esm.js",
