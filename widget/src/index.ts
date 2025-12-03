@@ -36,6 +36,7 @@ export { WespokeWidget, create } from './WespokeWidget';
 export { FloatingButton } from './components/FloatingButton';
 export { ChatWindow } from './components/ChatWindow';
 export { VoiceControls } from './components/VoiceControls';
+export { ChatInput } from './components/ChatInput';
 export { Transcript } from './components/Transcript';
 
 // Export all types
@@ -46,6 +47,7 @@ export type {
   WidgetPosition,
   WidgetTheme,
   WidgetSize,
+  WidgetMode,
   WidgetState,
   WidgetLocale,
   WidgetMessage,

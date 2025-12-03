@@ -56,6 +56,22 @@ export interface CallOptions {
 }
 
 /**
+ * Chat Session Response
+ */
+export interface ChatSessionResponse {
+  success: boolean;
+  data: {
+    chatId: string;
+    assistant: {
+      id: string;
+      name: string;
+      version: number;
+    };
+    startedAt: Date;
+  };
+}
+
+/**
  * Call State
  */
 export enum CallState {
@@ -142,6 +158,14 @@ export interface CallEndingEvent {
 }
 
 /**
+ * Knowledge Base Used Event
+ */
+export interface KnowledgeUsedEvent {
+  sources: string[];
+  timestamp: number;
+}
+
+/**
  * SDK Events Map
  */
 export interface WespokeEvents {
@@ -183,6 +207,9 @@ export interface WespokeEvents {
 
   /** Tool execution event */
   toolEvent: ToolEvent;
+
+  /** Knowledge base sources used */
+  knowledgeUsed: KnowledgeUsedEvent;
 
   /** Call metrics updated */
   metrics: CallMetrics;

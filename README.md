@@ -5,6 +5,22 @@ Official JavaScript SDK for embedding Wespoke AI voice assistants in any website
 [![npm version](https://img.shields.io/npm/v/@wespoke/web-sdk.svg)](https://www.npmjs.com/package/@wespoke/web-sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
+## Packages
+
+This repository contains two packages:
+
+### [@wespoke/web-sdk](./web-sdk) - Core SDK
+
+Headless JavaScript SDK for building custom voice interfaces. Gives you full control over the UI while handling all voice communication logic.
+
+**Use when:** You want complete control over the UI and UX.
+
+### [@wespoke/widget](./widget) - Pre-built Widget
+
+Drop-in UI component with a complete voice chat interface. Add AI voice assistant to your site with zero UI development.
+
+**Use when:** You want a ready-to-use interface that works out of the box.
+
 ## Features
 
 - 🎤 **Real-time Voice Communication** - Powered by LiveKit WebRTC
@@ -17,34 +33,79 @@ Official JavaScript SDK for embedding Wespoke AI voice assistants in any website
 
 ## Installation
 
-### NPM
+### Core SDK (Headless)
 
 ```bash
 npm install @wespoke/web-sdk
 ```
 
-### Yarn
+See [web-sdk README](./web-sdk) for detailed SDK documentation.
+
+### Pre-built Widget (With UI)
 
 ```bash
-yarn add @wespoke/web-sdk
+npm install @wespoke/widget react react-dom
 ```
 
-### CDN (UMD)
+Or use via CDN:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@wespoke/web-sdk@latest/dist/wespoke.umd.js"></script>
+<!-- React 18 (required) -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<!-- Wespoke Widget -->
+<link rel="stylesheet" href="https://unpkg.com/@wespoke/widget/dist/wespoke-widget.umd.css">
+<script src="https://unpkg.com/@wespoke/widget/dist/wespoke-widget.umd.js"></script>
 ```
+
+See [widget README](./widget) for detailed widget documentation.
 
 ## Quick Start
 
-### 1. Get Your API Credentials
+### Get Your API Credentials
 
 1. Sign up at [Wespoke Dashboard](https://wespoke.ai)
 2. Create a new Web Embedding API key
 3. Add your domain to the allowed origins list
 4. Copy your API key (starts with `pk_`)
 
-### 2. Basic Usage
+### Option 1: Pre-built Widget (Easiest)
+
+Add a complete voice interface with one script tag:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Wespoke Widget -->
+  <link rel="stylesheet" href="https://unpkg.com/@wespoke/widget/dist/wespoke-widget.umd.css">
+</head>
+<body>
+  <h1>My Website</h1>
+
+  <script src="https://unpkg.com/@wespoke/widget/dist/wespoke-widget.umd.js"></script>
+  <script>
+    WespokeWidget.create({
+      apiKey: 'pk_your_api_key_here',
+      assistantId: 'your_assistant_id',
+      position: 'bottom-right',
+      theme: 'dark'
+    });
+  </script>
+</body>
+</html>
+```
+
+See [widget documentation](./widget) for all customization options.
+
+### Option 2: Core SDK (Custom UI)
+
+Build your own interface with full control:
 
 ```javascript
 import { Wespoke } from '@wespoke/web-sdk';
@@ -71,6 +132,8 @@ await wespoke.startCall();
 // End the call
 await wespoke.endCall();
 ```
+
+See [SDK documentation](./web-sdk) for complete API reference.
 
 ## Framework Examples
 

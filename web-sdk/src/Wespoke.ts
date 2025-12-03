@@ -17,7 +17,8 @@ import {
   TranscriptionEvent,
   ToolEvent,
   CallMetrics,
-  CallEndingEvent
+  CallEndingEvent,
+  ChatSessionResponse
 } from './types';
 import {
   WespokeError,
@@ -35,9 +36,12 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
   private attachedTracks: Map<string, HTMLAudioElement> = new Map();
   private callState: CallState = CallState.IDLE;
   private currentCallId: string | null = null;
+  private currentChatId: string | null = null;
   private abortController: AbortController | null = null;
+  private chatAbortController: AbortController | null = null;
   private pollInterval: NodeJS.Timeout | null = null;
   private seenMessageIds: Set<string> = new Set();
+  private shouldEndChatAfterStart: boolean = false;
 
   constructor(config: WespokeConfig) {
     super();
@@ -105,7 +109,10 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
       this.setState(CallState.CONNECTED);
       this.log('Call started successfully');
     } catch (error) {
-      this.setState(CallState.ERROR);
+      // Reset to IDLE (not ERROR) to allow retries after transient failures
+      this.setState(CallState.IDLE);
+      // Clear any partial call state
+      this.currentCallId = null;
       this.log('Error starting call:', error);
       this.emit('error', error as Error);
       throw error;
@@ -224,7 +231,7 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
 
       this.emit('microphoneMuted', newMuted);
 
-      return !newMuted; // Return enabled state
+      return newMuted; // Return muted state (true = muted, false = unmuted)
     } catch (error) {
       this.log('Error toggling mute:', error);
       throw error;
@@ -343,11 +350,211 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
   }
 
   /**
+   * Start a chat session (text-based, no voice)
+   */
+  async startChatSession(assistantId: string, options: CallOptions = {}): Promise<void> {
+    if (this.currentChatId) {
+      throw new WespokeError('A chat session is already in progress', 'CHAT_IN_PROGRESS');
+    }
+
+    if (
+      (this.callState !== CallState.IDLE && this.callState !== CallState.DISCONNECTED) ||
+      this.currentCallId
+    ) {
+      throw new WespokeError('Cannot start chat while a voice call is active', 'CALL_IN_PROGRESS');
+    }
+
+    this.setState(CallState.CONNECTING);
+    this.seenMessageIds.clear();
+
+    // Create abort controller for this chat session
+    this.chatAbortController = new AbortController();
+    this.shouldEndChatAfterStart = false;
+
+    try {
+      this.log('Starting chat session...');
+      const url = `${this.config.apiUrl}/api/v1/embed/chat`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.apiKey}`
+        },
+        body: JSON.stringify({
+          assistantId,
+          metadata: options.metadata || {}
+        }),
+        signal: this.chatAbortController.signal
+      });
+
+      const data: ChatSessionResponse = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw parseAPIError(data, response.status);
+      }
+
+      this.currentChatId = data.data.chatId;
+
+      // Check if endChatSession was called while we were connecting
+      if (this.shouldEndChatAfterStart) {
+        this.log('Chat session created but immediately ending due to close during connecting');
+        await this.endChatSession();
+        return;
+      }
+
+      this.setState(CallState.CONNECTED);
+      this.log(`Chat session started. Chat ID: ${this.currentChatId}`);
+      this.emit('connected');
+    } catch (error) {
+      // Check if it was an abort
+      if (error instanceof Error && error.name === 'AbortError') {
+        this.log('Chat session start aborted');
+        this.setState(CallState.IDLE);
+        this.emit('disconnected', 'Chat session start aborted');
+        return;
+      }
+
+      this.setState(CallState.IDLE);
+      this.emit('disconnected', 'Chat session failed to start');
+      this.log('Error starting chat session:', error);
+      this.emit('error', error as Error);
+      throw error;
+    } finally {
+      this.chatAbortController = null;
+    }
+  }
+
+  /**
+   * Send a chat message and receive streaming response via SSE
+   */
+  async sendChatMessage(content: string): Promise<void> {
+    if (!this.currentChatId) {
+      throw new WespokeError('No active chat session', 'NO_ACTIVE_CHAT');
+    }
+
+    if (this.callState !== CallState.CONNECTED) {
+      throw new WespokeError('Not connected to a chat session', 'NOT_CONNECTED');
+    }
+
+    try {
+      // Emit user message immediately
+      const userMessage: ConversationMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content,
+        timestamp: Date.now(),
+        isComplete: true
+      };
+
+      if (!this.seenMessageIds.has(userMessage.id)) {
+        this.seenMessageIds.add(userMessage.id);
+        this.emit('message', userMessage);
+      }
+
+      this.log('Sending chat message...');
+      const url = `${this.config.apiUrl}/api/v1/embed/chat/${this.currentChatId}/messages`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.apiKey}`
+        },
+        body: JSON.stringify({ content })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw parseAPIError(data, response.status);
+      }
+
+      // Handle SSE streaming response
+      await this.handleSSEStream(response);
+    } catch (error) {
+      this.log('Error sending chat message:', error);
+      this.emit('error', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * End the current chat session
+   */
+  async endChatSession(): Promise<void> {
+    // If chat is still connecting, abort the request and set flag
+    if (this.callState === CallState.CONNECTING && this.chatAbortController && !this.currentChatId) {
+      this.log('Aborting pending chat session start');
+      this.shouldEndChatAfterStart = true;
+      this.chatAbortController.abort();
+      this.setState(CallState.IDLE);
+      return;
+    }
+
+    // If we have a chat ID (even if still connecting), we need to end it on the server
+    if (!this.currentChatId) {
+      // Reset flag just in case
+      this.shouldEndChatAfterStart = false;
+      return;
+    }
+
+    this.setState(CallState.DISCONNECTING);
+
+    try {
+      this.log('Ending chat session...');
+      const url = `${this.config.apiUrl}/api/v1/embed/chat/${this.currentChatId}/end`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.apiKey}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        this.log('Failed to end chat session via API:', data);
+        // Continue with cleanup even if API call fails
+      }
+
+      this.currentChatId = null;
+      this.seenMessageIds.clear();
+      this.shouldEndChatAfterStart = false;
+      this.setState(CallState.DISCONNECTED);
+      this.emit('disconnected', 'Chat session ended');
+      this.log('Chat session ended');
+    } catch (error) {
+      this.log('Error ending chat session:', error);
+      // Clear state even on error to allow retry
+      this.currentChatId = null;
+      this.shouldEndChatAfterStart = false;
+      this.seenMessageIds.clear();
+      // Reset to DISCONNECTED to allow new calls/chats
+      this.setState(CallState.DISCONNECTED);
+      this.emit('disconnected', 'Chat session ended with error');
+      this.emit('error', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current chat ID
+   */
+  getChatId(): string | null {
+    return this.currentChatId;
+  }
+
+  /**
    * Destroy the SDK instance and clean up resources
    */
   destroy(): void {
     this.stopMessagePolling();
     this.endCall().catch(() => {
+      // Ignore errors during cleanup
+    });
+    this.endChatSession().catch(() => {
       // Ignore errors during cleanup
     });
     this.removeAllListeners();
@@ -378,6 +585,155 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
     }
 
     return data.data;
+  }
+
+  /**
+   * Handle Server-Sent Events (SSE) stream from chat message response
+   */
+  private async handleSSEStream(response: Response): Promise<void> {
+    if (!response.body) {
+      throw new WespokeError('No response body', 'NO_RESPONSE_BODY');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentMessageId = `assistant-${Date.now()}`;
+    let accumulatedContent = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        // Decode the chunk and add to buffer
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE messages (ending with \n\n)
+        const messages = buffer.split('\n\n');
+        buffer = messages.pop() || ''; // Keep incomplete message in buffer
+
+        for (const message of messages) {
+          if (!message.trim() || message.startsWith(': ')) {
+            continue; // Skip empty messages and comments
+          }
+
+          // Parse SSE format with event: and data: lines
+          const lines = message.split('\n');
+          let eventType = '';
+          let eventData: any = null;
+
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7).trim();
+            } else if (line.startsWith('data: ')) {
+              try {
+                const jsonData = line.slice(6); // Remove "data: " prefix
+                eventData = JSON.parse(jsonData);
+              } catch (error) {
+                this.log('Error parsing SSE data:', error);
+              }
+            }
+          }
+
+          // Handle different SSE event types
+          if (!eventType || !eventData) continue;
+
+          switch (eventType) {
+            case 'message:start':
+              // New message starting
+              currentMessageId = eventData.messageId || `assistant-${Date.now()}`;
+              accumulatedContent = '';
+              break;
+
+            case 'message:chunk':
+              // Streaming text chunk - just accumulate, don't emit yet
+              accumulatedContent = eventData.accumulatedContent || accumulatedContent;
+              // Note: We don't emit here to avoid duplicates.
+              // The complete message will be emitted on message:complete
+              break;
+
+            case 'message:complete':
+              // Message is complete
+              const messageData = eventData.message || {};
+              const completeMessage: ConversationMessage = {
+                id: messageData.id || currentMessageId,
+                role: messageData.role || 'assistant',
+                content: messageData.content || accumulatedContent.trim(),
+                timestamp: eventData.timestamp || Date.now(),
+                isComplete: true
+              };
+
+              if (!this.seenMessageIds.has(completeMessage.id)) {
+                this.seenMessageIds.add(completeMessage.id);
+                this.emit('message', completeMessage);
+              }
+
+              // Reset for next message
+              accumulatedContent = '';
+              break;
+
+            case 'tool:started':
+              this.log('Tool started:', eventData.toolName);
+              this.emit('toolEvent', {
+                type: 'start',
+                toolName: eventData.toolName,
+                toolType: eventData.toolType,
+                timestamp: eventData.timestamp || Date.now(),
+                toolDetails: eventData.toolDetails || {}
+              } as ToolEvent);
+              break;
+
+            case 'tool:completed':
+              this.log('Tool completed:', eventData.toolId);
+              this.emit('toolEvent', {
+                type: 'complete',
+                toolName: eventData.toolName,
+                toolType: eventData.toolType,
+                timestamp: eventData.timestamp || Date.now(),
+                toolDetails: eventData.toolDetails || {}
+              } as ToolEvent);
+              break;
+
+            case 'tool:failed':
+              this.log('Tool failed:', eventData.toolId);
+              this.emit('toolEvent', {
+                type: 'failed',
+                toolName: eventData.toolName,
+                toolType: eventData.toolType,
+                timestamp: eventData.timestamp || Date.now(),
+                toolDetails: eventData.toolDetails || {}
+              } as ToolEvent);
+              break;
+
+            case 'knowledge:used':
+              this.log('Knowledge base used:', eventData.sources);
+              // Emit knowledge event for consistency with voice sessions
+              this.emit('knowledgeUsed', {
+                sources: eventData.sources || [],
+                timestamp: eventData.timestamp || Date.now()
+              });
+              break;
+
+            case 'error':
+              // Error occurred
+              throw new WespokeError(eventData.message || 'Chat error', eventData.code || 'CHAT_ERROR');
+
+            case 'done':
+              // Stream complete
+              return;
+          }
+        }
+      }
+    } catch (error) {
+      this.log('Error reading SSE stream:', error);
+      throw error;
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   private createRoom(): void {
@@ -532,16 +888,15 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
       switch (data.type) {
         case 'message':
         case 'conversation_item':
-          // Deduplicate messages by ID
-          if (data.id && this.seenMessageIds.has(data.id)) {
-            this.log('Skipping duplicate message:', data.id);
+          // Deduplicate streaming messages by ID
+          // For incomplete/streaming messages: skip duplicates
+          // For complete messages: allow through to update with final content
+          if (data.id && this.seenMessageIds.has(data.id) && !data.isComplete) {
+            this.log('Skipping duplicate incomplete message:', data.id);
             return;
           }
 
-          if (data.id) {
-            this.seenMessageIds.add(data.id);
-          }
-
+          // Emit the message
           this.emit('message', {
             id: data.id,
             role: data.role,
@@ -551,6 +906,13 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
             isFirstChunk: data.isFirstChunk,
             isStreaming: data.isStreaming
           } as ConversationMessage);
+
+          // Add to seen set after emitting
+          // For streaming: mark after first chunk so final update can come through
+          // For complete: mark to prevent polling fallback from re-emitting
+          if (data.id && data.isComplete) {
+            this.seenMessageIds.add(data.id);
+          }
           break;
 
         case 'transcription_stream':
@@ -604,12 +966,24 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
   private startMessagePolling(): void {
     // Poll for new messages every 2 seconds
     // Note: This is a fallback - data channel messages are still preferred
-    this.pollInterval = setInterval(() => {
+    this.pollInterval = setInterval(async () => {
       if (this.currentCallId && this.callState === CallState.CONNECTED) {
-        // Silent polling - don't throw errors
-        this.getMessages(10, 0).catch((error) => {
+        try {
+          const messages = await this.getMessages(50, 0);
+
+          this.log(`Polling found ${messages.length} messages`);
+
+          // Emit messages that we haven't seen yet
+          messages.forEach((message) => {
+            if (message.id && !this.seenMessageIds.has(message.id)) {
+              this.seenMessageIds.add(message.id);
+              this.log(`Emitting new message: ${message.role} - ${message.content?.substring(0, 50)}`);
+              this.emit('message', message);
+            }
+          });
+        } catch (error) {
           this.log('Error polling messages:', error);
-        });
+        }
       }
     }, 2000);
   }

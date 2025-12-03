@@ -10,6 +10,7 @@ export interface FloatingButtonProps {
   onClick: () => void;
   badgeCount?: number;
   buttonText?: string;
+  mode?: 'voice' | 'chat' | 'hybrid';
 }
 
 export const FloatingButton: React.FC<FloatingButtonProps> = ({
@@ -20,7 +21,8 @@ export const FloatingButton: React.FC<FloatingButtonProps> = ({
   accentColor,
   onClick,
   badgeCount = 0,
-  buttonText = 'Asistan ile Konuş'
+  buttonText = 'Asistan ile Konuş',
+  mode = 'voice'
 }) => {
   const positionClass = `wespoke-fab-${position}`;
   const stateClass = isOpen ? 'wespoke-fab-open' : '';
@@ -50,7 +52,7 @@ export const FloatingButton: React.FC<FloatingButtonProps> = ({
       {/* Icon - changes based on state */}
       <div className="wespoke-fab-icon">
         {isOpen ? (
-          // Close icon (X)
+          // Close icon (X) - shown when widget is open
           <svg
             width="24"
             height="24"
@@ -64,8 +66,22 @@ export const FloatingButton: React.FC<FloatingButtonProps> = ({
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
-        ) : isActive ? (
-          // Microphone active icon (with pulse animation)
+        ) : mode === 'chat' ? (
+          // Message bubble icon (for chat mode)
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        ) : (
+          // Microphone icon (for voice mode or hybrid)
           <svg
             width="24"
             height="24"
@@ -80,20 +96,6 @@ export const FloatingButton: React.FC<FloatingButtonProps> = ({
             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
             <line x1="12" y1="19" x2="12" y2="23" />
             <line x1="8" y1="23" x2="16" y2="23" />
-          </svg>
-        ) : (
-          // Message bubble icon (default)
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         )}
       </div>

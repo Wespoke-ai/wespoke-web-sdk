@@ -19,6 +19,7 @@ export type {
   CallEndingEvent,
   WespokeEvents,
   TokenResponse,
+  ChatSessionResponse,
   APIErrorResponse,
   MessageRole,
   ToolEventType

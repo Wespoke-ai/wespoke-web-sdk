@@ -26,17 +26,15 @@ const baseConfig = {
 };
 
 export default [
-  // UMD build (for <script> tags)
+  // UMD build (for <script> tags) - bundles LiveKit internally
   {
     ...baseConfig,
+    external: [], // Bundle LiveKit for UMD (browser needs self-contained bundle)
     output: {
       file: 'dist/wespoke.umd.js',
       format: 'umd',
       name: 'Wespoke',
-      sourcemap: true,
-      globals: {
-        'livekit-client': 'LivekitClient'
-      }
+      sourcemap: true
     },
     plugins: [
       ...baseConfig.plugins,

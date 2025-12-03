@@ -18,6 +18,11 @@ export type WidgetTheme = 'light' | 'dark' | 'auto';
 export type WidgetSize = 'compact' | 'medium' | 'full';
 
 /**
+ * Widget mode
+ */
+export type WidgetMode = 'voice' | 'chat' | 'hybrid';
+
+/**
  * Locale/Language
  */
 export type WidgetLocale = 'tr' | 'en';
@@ -30,7 +35,7 @@ export type WidgetState = 'idle' | 'connecting' | 'connected' | 'minimized';
 /**
  * Message role
  */
-export type MessageRole = 'user' | 'assistant' | 'system';
+export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
 
 /**
  * Message interface
@@ -70,6 +75,9 @@ export interface WespokeWidgetConfig {
   /** Optional: Widget size (default: 'medium') */
   size?: WidgetSize;
 
+  /** Optional: Widget mode - voice, chat, or hybrid (default: 'voice') */
+  mode?: WidgetMode;
+
   /** Optional: Auto-expand widget on page load (default: false) */
   autoOpen?: boolean;
 
@@ -81,9 +89,6 @@ export interface WespokeWidgetConfig {
 
   /** Optional: Custom button text (default: 'Asistan ile Konuş') */
   buttonText?: string;
-
-  /** Optional: Welcome message displayed when opened */
-  welcomeMessage?: string;
 
   /** Optional: Placeholder text in chat input (default: 'Bir şeyler yazın...') */
   placeholderText?: string;

@@ -48,10 +48,11 @@ export default [
       globals: {
         '@wespoke/web-sdk': 'Wespoke',
         'react': 'React',
-        'react-dom': 'ReactDOM'
+        'react-dom': 'ReactDOM',
+        'react-dom/client': 'ReactDOM'
       }
     },
-    external: ['@wespoke/web-sdk', 'react', 'react-dom'],
+    external: ['@wespoke/web-sdk', 'react', 'react-dom', 'react-dom/client'],
     plugins: [
       ...baseConfig.plugins,
       isProd && terser({
@@ -70,7 +71,7 @@ export default [
       format: 'esm',
       sourcemap: true
     },
-    external: ['@wespoke/web-sdk', 'react', 'react-dom']
+    external: ['@wespoke/web-sdk', 'react', 'react-dom', 'react-dom/client']
   },
   // CommonJS build (for Node.js)
   {
@@ -81,6 +82,6 @@ export default [
       sourcemap: true,
       exports: 'named'
     },
-    external: ['@wespoke/web-sdk', 'react', 'react-dom']
+    external: ['@wespoke/web-sdk', 'react', 'react-dom', 'react-dom/client']
   }
 ];

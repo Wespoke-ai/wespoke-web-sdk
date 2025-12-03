@@ -8,7 +8,6 @@ export interface ChatWindowProps {
   position: WidgetPosition;
   primaryColor: string;
   accentColor: string;
-  welcomeMessage?: string;
   children: ReactNode;
   onClose: () => void;
 }
@@ -19,7 +18,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   position,
   primaryColor,
   accentColor,
-  welcomeMessage,
   children,
   onClose
 }) => {
@@ -94,28 +92,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </svg>
           </button>
         </div>
-
-        {/* Welcome Message */}
-        {welcomeMessage && (
-          <div className="wespoke-chat-welcome">
-            <div className="wespoke-chat-welcome-icon">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 2a10 10 0 1 0 10 10H12V2z" />
-                <path d="M12 12l9.09-5.26" />
-              </svg>
-            </div>
-            <p className="wespoke-chat-welcome-text">{welcomeMessage}</p>
-          </div>
-        )}
 
         {/* Content Area - Children (Transcript + VoiceControls) */}
         <div className="wespoke-chat-content">

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Wespoke } from '@wespoke/web-sdk';
 import { WespokeWidgetConfig, WespokeWidgetAPI, WidgetMessage, WidgetState, WidgetError } from './types';
 import { FloatingButton } from './components/FloatingButton';
 import { ChatWindow } from './components/ChatWindow';
 import { VoiceControls } from './components/VoiceControls';
+import { ChatInput } from './components/ChatInput';
 import { Transcript } from './components/Transcript';
 
 // Import base styles
@@ -19,14 +22,14 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
     primaryColor = '#4d8e8c',
     accentColor = '#6db3b0',
     size = 'medium',
+    mode = 'voice',
     autoOpen = false,
     showTranscript = true,
     requireConsent = true,
     buttonText,
-    welcomeMessage,
     placeholderText,
     metadata = {},
-    locale = 'tr',
+    locale: _locale = 'tr', // Prefix with _ to indicate intentionally unused for now
     debug = false,
     zIndex = 9999,
     onCallStart,
@@ -40,13 +43,16 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
   // State
   const [isOpen, setIsOpen] = useState(autoOpen);
   const [state, setState] = useState<WidgetState>('idle');
+  const [voiceState, setVoiceState] = useState<WidgetState>('idle'); // Separate state for voice calls
+  const [chatState, setChatState] = useState<WidgetState>('idle'); // Separate state for chat sessions
   const [messages, setMessages] = useState<WidgetMessage[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [badgeCount, setBadgeCount] = useState(0);
 
   // Refs
-  const sdkRef = useRef<any>(null);
+  const sdkRef = useRef<Wespoke | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const chatStartAttemptedRef = useRef<boolean>(false);
 
   // Set CSS custom property for z-index
   useEffect(() => {
@@ -63,8 +69,13 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
     onTranscriptUpdate?.(messages);
   }, [messages, onTranscriptUpdate]);
 
-  // Initialize SDK (placeholder - actual SDK integration will be implemented)
+  // Initialize SDK - only run once on mount
   useEffect(() => {
+    // Only initialize once
+    if (sdkRef.current) {
+      return;
+    }
+
     if (debug) {
       console.log('[Wespoke Widget] Initializing with config:', {
         apiKey: `${apiKey.substring(0, 10)}...`,
@@ -73,58 +84,197 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
       });
     }
 
-    // TODO: Initialize @wespoke/web-sdk here
-    // sdkRef.current = new Wespoke({ apiKey, assistantId, apiUrl, ...metadata });
+    // Initialize @wespoke/web-sdk
+    sdkRef.current = new Wespoke({
+      apiKey,
+      apiUrl,
+      debug
+    });
+
+    // Set up event listeners
+    sdkRef.current.on('message', (message: any) => {
+      const widgetMessage: WidgetMessage = {
+        id: message.id || `msg-${Date.now()}`,
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp || Date.now()
+      };
+      setMessages(prev => [...prev, widgetMessage]);
+      onMessage?.(widgetMessage);
+    });
+
+    // Also listen for transcription events (user speech)
+    sdkRef.current.on('transcription', (transcription: any) => {
+      // Only show final transcriptions as messages
+      if (transcription.isFinal && transcription.text && transcription.text.trim()) {
+        const widgetMessage: WidgetMessage = {
+          id: transcription.transcriptionId || `transcription-${Date.now()}`,
+          role: 'user',
+          content: transcription.text,
+          timestamp: transcription.timestamp || Date.now()
+        };
+        setMessages(prev => [...prev, widgetMessage]);
+        onMessage?.(widgetMessage);
+      }
+    });
+
+    sdkRef.current.on('stateChange', (newState: string) => {
+      // Map SDK states to widget states
+      const widgetState: WidgetState =
+        newState === 'connected' ? 'connected' :
+        newState === 'connecting' ? 'connecting' :
+        'idle';
+      setState(widgetState);
+    });
+
+    sdkRef.current.on('disconnected', (reason?: string) => {
+      if (debug) {
+        console.log('[Wespoke Widget] SDK disconnected:', reason);
+      }
+      // Reset both voice and chat states to idle on disconnect
+      // This ensures hybrid mode UI is properly updated on remote disconnects
+      setVoiceState('idle');
+      setChatState('idle');
+      setState('idle');
+      // Reset chat start flag to allow auto-restart after remote disconnect
+      // Without this, chat mode stays permanently disabled until widget is closed/reopened
+      chatStartAttemptedRef.current = false;
+    });
+
+    sdkRef.current.on('error', (error: any) => {
+      const widgetError: WidgetError = {
+        code: error.code || 'UNKNOWN_ERROR',
+        message: error.message || 'An error occurred',
+        details: error
+      };
+      onError?.(widgetError);
+    });
 
     return () => {
-      // Cleanup SDK on unmount
+      // Cleanup SDK on unmount - end sessions and remove listeners
       if (sdkRef.current) {
-        // TODO: Call SDK cleanup
-        // sdkRef.current.disconnect();
+        // End voice call if active
+        sdkRef.current.endCall().catch(() => {
+          // Ignore errors during cleanup
+        });
+        // End chat session if active
+        sdkRef.current.endChatSession().catch(() => {
+          // Ignore errors during cleanup
+        });
+        // Destroy SDK instance to remove all event listeners
+        // This prevents memory leaks and "Can't update unmounted component" warnings
+        sdkRef.current.destroy();
+        sdkRef.current = null;
       }
     };
-  }, [apiKey, assistantId, apiUrl, metadata, debug]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount - callbacks use latest values via closure
 
   // Handle opening/closing
-  const handleOpen = useCallback(() => {
-    setIsOpen(true);
-    setBadgeCount(0); // Clear badge when opening
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setIsOpen(false);
-  }, []);
-
   const handleToggle = useCallback(() => {
-    setIsOpen((prev) => !prev);
-    if (!isOpen) {
+    const willBeOpen = !isOpen;
+    setIsOpen(willBeOpen);
+
+    if (willBeOpen) {
+      // Opening: clear badge and reset chat start attempt flag
       setBadgeCount(0);
+      chatStartAttemptedRef.current = false;
+    } else {
+      // Closing: end any active sessions (voice or chat)
+      chatStartAttemptedRef.current = false;
+      if (sdkRef.current) {
+        // In hybrid mode, need to end both voice and chat if active
+        if (mode === 'hybrid') {
+          if (voiceState !== 'idle') {
+            sdkRef.current.endCall().catch((error) => {
+              const err: WidgetError = {
+                code: 'CALL_END_FAILED',
+                message: error instanceof Error ? error.message : 'Failed to end call',
+                details: error
+              };
+              onError?.(err);
+            });
+          }
+          if (chatState !== 'idle') {
+            sdkRef.current.endChatSession().catch((error) => {
+              const err: WidgetError = {
+                code: 'CHAT_END_FAILED',
+                message: error instanceof Error ? error.message : 'Failed to end chat session',
+                details: error
+              };
+              onError?.(err);
+            });
+          }
+        } else if (mode === 'chat' && state !== 'idle') {
+          // End chat session for chat mode only
+          sdkRef.current.endChatSession().catch((error) => {
+            const err: WidgetError = {
+              code: 'CHAT_END_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to end chat session',
+              details: error
+            };
+            onError?.(err);
+          });
+        } else if (mode === 'voice' && state !== 'idle') {
+          // End voice call for voice mode only
+          sdkRef.current.endCall().catch((error) => {
+            const err: WidgetError = {
+              code: 'CALL_END_FAILED',
+              message: error instanceof Error ? error.message : 'Failed to end call',
+              details: error
+            };
+            onError?.(err);
+          });
+        }
+
+        // Only reset states and invoke onCallEnd if a session was actually active
+        const hadActiveSession = voiceState !== 'idle' || chatState !== 'idle';
+        if (hadActiveSession) {
+          setState('idle');
+          setVoiceState('idle');
+          setChatState('idle');
+          onCallEnd?.();
+        }
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, mode, state, voiceState, chatState, onError, onCallEnd]);
 
   // Handle call control
   const handleStartCall = useCallback(async () => {
+    if (!sdkRef.current) {
+      console.error('[Wespoke Widget] SDK not initialized');
+      return;
+    }
+
     try {
+      // In hybrid mode, if chat session is active, end it before starting voice call
+      // The SDK enforces mutual exclusion - only one session type can be active
+      if (mode === 'hybrid' && chatState !== 'idle') {
+        if (debug) {
+          console.log('[Wespoke Widget] Ending chat session before starting voice call');
+        }
+        await sdkRef.current.endChatSession();
+        setChatState('idle');
+        // Reset flag so chat can auto-restart after voice call ends
+        chatStartAttemptedRef.current = false;
+      }
+
+      setVoiceState('connecting');
       setState('connecting');
 
-      // TODO: Implement actual SDK call start
-      // await sdkRef.current.startCall();
+      if (debug) {
+        console.log('[Wespoke Widget] Starting call with assistant:', assistantId);
+      }
 
+      // Start the call using the SDK
+      await sdkRef.current.startCall(assistantId, { metadata });
+
+      setVoiceState('connected');
       setState('connected');
       onCallStart?.();
 
-      // Simulate a welcome message (remove after SDK integration)
-      const welcomeMsg: WidgetMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content: 'Merhaba! Size nasıl yardımcı olabilirim?',
-        timestamp: Date.now()
-      };
-      setMessages([welcomeMsg]);
-      onMessage?.(welcomeMsg);
-
       if (debug) {
-        console.log('[Wespoke Widget] Call started');
+        console.log('[Wespoke Widget] Call started successfully');
       }
     } catch (error) {
       const err: WidgetError = {
@@ -133,20 +283,39 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
         details: error
       };
       onError?.(err);
+      setVoiceState('idle');
       setState('idle');
 
       if (debug) {
         console.error('[Wespoke Widget] Failed to start call:', error);
       }
     }
-  }, [onCallStart, onMessage, onError, debug]);
+  }, [mode, chatState, assistantId, metadata, onCallStart, onError, debug]);
 
   const handleEndCall = useCallback(async () => {
-    try {
-      // TODO: Implement actual SDK call end
-      // await sdkRef.current.endCall();
+    if (!sdkRef.current) {
+      console.error('[Wespoke Widget] SDK not initialized');
+      return;
+    }
 
-      setState('idle');
+    try {
+      await sdkRef.current.endCall();
+
+      setVoiceState('idle');
+      // In hybrid mode, reset main state to idle if chat is also idle
+      // This allows chat to auto-restart after voice call ends
+      if (mode === 'hybrid') {
+        // Use functional setState to read current chatState
+        setChatState((currentChatState) => {
+          if (currentChatState === 'idle') {
+            setState('idle');
+          }
+          return currentChatState;
+        });
+      } else {
+        // Voice-only mode, always reset to idle
+        setState('idle');
+      }
       onCallEnd?.();
 
       if (debug) {
@@ -164,21 +333,25 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
         console.error('[Wespoke Widget] Failed to end call:', error);
       }
     }
-  }, [onCallEnd, onError, debug]);
+  }, [mode, onCallEnd, onError, debug]);
 
   const handleToggleMute = useCallback(async () => {
-    try {
-      // TODO: Implement actual SDK mute toggle
-      // const newMutedState = await sdkRef.current.toggleMute();
+    if (!sdkRef.current) {
+      console.error('[Wespoke Widget] SDK not initialized');
+      return isMuted;
+    }
 
-      const newMutedState = !isMuted;
-      setIsMuted(newMutedState);
+    try {
+      const sdkMuteState = await sdkRef.current.toggleMute();
+      // SDK returns muted state (true = muted, false = unmuted)
+      // Widget uses the same convention, so no inversion needed
+      setIsMuted(sdkMuteState);
 
       if (debug) {
-        console.log('[Wespoke Widget] Mute toggled:', newMutedState);
+        console.log('[Wespoke Widget] Mute toggled - muted:', sdkMuteState);
       }
 
-      return newMutedState;
+      return sdkMuteState;
     } catch (error) {
       const err: WidgetError = {
         code: 'MUTE_TOGGLE_FAILED',
@@ -195,6 +368,181 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
     }
   }, [isMuted, onError, debug]);
 
+  // Handle chat mode
+  const handleStartChatSession = useCallback(async () => {
+    if (!sdkRef.current) {
+      console.error('[Wespoke Widget] SDK not initialized');
+      return;
+    }
+
+    // Mark that we've attempted to start
+    chatStartAttemptedRef.current = true;
+
+    try {
+      setChatState('connecting');
+      // In hybrid mode, voice might already be running, don't override
+      if (mode !== 'hybrid' || voiceState === 'idle') {
+        setState('connecting');
+      }
+
+      if (debug) {
+        console.log('[Wespoke Widget] Starting chat session with assistant:', assistantId);
+      }
+
+      // Start chat session using the SDK
+      await sdkRef.current.startChatSession(assistantId, { metadata });
+
+      setChatState('connected');
+      // In hybrid mode, voice might already be running, don't override
+      if (mode !== 'hybrid' || voiceState === 'idle') {
+        setState('connected');
+      }
+      onCallStart?.();
+
+      if (debug) {
+        console.log('[Wespoke Widget] Chat session started successfully');
+      }
+    } catch (error) {
+      const err: WidgetError = {
+        code: 'CHAT_START_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to start chat session',
+        details: error
+      };
+      onError?.(err);
+      setChatState('idle');
+      if (mode !== 'hybrid' || voiceState === 'idle') {
+        setState('idle');
+      }
+      // Do NOT reset flag - keep it true to prevent infinite retry loop
+      // The flag will only be reset when user closes/reopens widget or ends session
+
+      if (debug) {
+        console.error('[Wespoke Widget] Failed to start chat session:', error);
+      }
+    }
+  }, [mode, voiceState, assistantId, metadata, onCallStart, onError, debug]);
+
+  const handleSendChatMessage = useCallback(async (message: string) => {
+    if (!sdkRef.current) {
+      console.error('[Wespoke Widget] SDK not initialized');
+      return;
+    }
+
+    try {
+      if (debug) {
+        console.log('[Wespoke Widget] Sending chat message:', message);
+      }
+
+      await sdkRef.current.sendChatMessage(message);
+
+      if (debug) {
+        console.log('[Wespoke Widget] Chat message sent successfully');
+      }
+    } catch (error) {
+      const err: WidgetError = {
+        code: 'CHAT_MESSAGE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to send chat message',
+        details: error
+      };
+      onError?.(err);
+
+      if (debug) {
+        console.error('[Wespoke Widget] Failed to send chat message:', error);
+      }
+    }
+  }, [onError, debug]);
+
+  const handleEndChatSession = useCallback(async () => {
+    if (!sdkRef.current) {
+      console.error('[Wespoke Widget] SDK not initialized');
+      return;
+    }
+
+    try {
+      await sdkRef.current.endChatSession();
+
+      setChatState('idle');
+      // Reset main state based on mode - read current voiceState from ref to avoid stale closure
+      if (mode === 'chat') {
+        setState('idle');
+      } else if (mode === 'hybrid') {
+        // In hybrid mode, only set to idle if voice is also idle
+        // Use functional setState to read current state values
+        setVoiceState((currentVoiceState) => {
+          if (currentVoiceState === 'idle') {
+            setState('idle');
+          }
+          return currentVoiceState;
+        });
+      }
+      // Reset flag so auto-start can trigger a new session if needed
+      chatStartAttemptedRef.current = false;
+      onCallEnd?.();
+
+      if (debug) {
+        console.log('[Wespoke Widget] Chat session ended');
+      }
+    } catch (error) {
+      const err: WidgetError = {
+        code: 'CHAT_END_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to end chat session',
+        details: error
+      };
+      onError?.(err);
+
+      // Reset states even on error to sync with SDK (which already cleared currentChatId)
+      setChatState('idle');
+      // Reset main state based on mode
+      if (mode === 'chat') {
+        setState('idle');
+      } else if (mode === 'hybrid') {
+        // In hybrid mode, check current voice state
+        setVoiceState((currentVoiceState) => {
+          if (currentVoiceState === 'idle') {
+            setState('idle');
+          }
+          return currentVoiceState;
+        });
+      }
+      // Reset flag so auto-start can retry
+      chatStartAttemptedRef.current = false;
+
+      if (debug) {
+        console.error('[Wespoke Widget] Failed to end chat session:', error);
+      }
+    }
+  }, [mode, onCallEnd, onError, debug]);
+
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    // Reset chat attempt flag so reopening can trigger a fresh start
+    chatStartAttemptedRef.current = false;
+
+    // End any active sessions when closing
+    if (mode === 'hybrid') {
+      // In hybrid mode, end both voice and chat if active
+      if (voiceState !== 'idle') {
+        handleEndCall();
+      }
+      if (chatState !== 'idle') {
+        handleEndChatSession();
+      }
+    } else if (mode === 'chat' && state !== 'idle') {
+      // End chat session for chat mode only
+      handleEndChatSession();
+    } else if (mode === 'voice' && state !== 'idle') {
+      // End voice call for voice mode only
+      handleEndCall();
+    }
+  }, [mode, state, voiceState, chatState, handleEndChatSession, handleEndCall]);
+
+  // Auto-start chat session when widget opens in chat or hybrid mode
+  useEffect(() => {
+    if (isOpen && (mode === 'chat' || mode === 'hybrid') && state === 'idle' && sdkRef.current && !chatStartAttemptedRef.current) {
+      handleStartChatSession();
+    }
+  }, [isOpen, mode, state, handleStartChatSession]);
+
   // Apply theme class
   const themeClass = theme === 'light' ? 'wespoke-widget-light' : '';
 
@@ -210,6 +558,7 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
         onClick={handleToggle}
         badgeCount={badgeCount}
         buttonText={buttonText}
+        mode={mode}
       />
 
       {/* Chat Window */}
@@ -219,7 +568,6 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
         position={position}
         primaryColor={primaryColor}
         accentColor={accentColor}
-        welcomeMessage={welcomeMessage}
         onClose={handleClose}
       >
         {/* Transcript */}
@@ -229,17 +577,46 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
           placeholderText={placeholderText}
         />
 
-        {/* Voice Controls */}
-        <VoiceControls
-          state={state}
-          isMuted={isMuted}
-          primaryColor={primaryColor}
-          accentColor={accentColor}
-          onStartCall={handleStartCall}
-          onEndCall={handleEndCall}
-          onToggleMute={handleToggleMute}
-          requireConsent={requireConsent}
-        />
+        {/* Conditional rendering based on mode */}
+        {mode === 'voice' ? (
+          /* Voice Controls for voice mode */
+          <VoiceControls
+            state={state}
+            isMuted={isMuted}
+            primaryColor={primaryColor}
+            accentColor={accentColor}
+            onStartCall={handleStartCall}
+            onEndCall={handleEndCall}
+            onToggleMute={handleToggleMute}
+            requireConsent={requireConsent}
+          />
+        ) : mode === 'chat' ? (
+          /* Chat Input for chat mode */
+          <ChatInput
+            onSendMessage={handleSendChatMessage}
+            disabled={state !== 'connected'}
+            placeholder={placeholderText}
+          />
+        ) : mode === 'hybrid' ? (
+          /* Hybrid mode - both voice and chat controls with separate states */
+          <>
+            <VoiceControls
+              state={voiceState}
+              isMuted={isMuted}
+              primaryColor={primaryColor}
+              accentColor={accentColor}
+              onStartCall={handleStartCall}
+              onEndCall={handleEndCall}
+              onToggleMute={handleToggleMute}
+              requireConsent={requireConsent}
+            />
+            <ChatInput
+              onSendMessage={handleSendChatMessage}
+              disabled={chatState !== 'connected'}
+              placeholder={placeholderText}
+            />
+          </>
+        ) : null}
       </ChatWindow>
     </div>
   );
@@ -250,8 +627,9 @@ export const create = (config: WespokeWidgetConfig): WespokeWidgetAPI => {
   const container = document.createElement('div');
   document.body.appendChild(container);
 
-  // TODO: Render React component to container
-  // ReactDOM.render(<WespokeWidget {...config} />, container);
+  // Render React component to container using React 18 API
+  const root = createRoot(container);
+  root.render(React.createElement(WespokeWidget, config));
 
   // Return API methods
   return {
@@ -297,7 +675,8 @@ export const create = (config: WespokeWidgetConfig): WespokeWidgetAPI => {
       console.log('[Wespoke Widget] API: clearTranscript()');
     },
     destroy: () => {
-      // TODO: Cleanup and remove from DOM
+      // Unmount React component and remove from DOM
+      root.unmount();
       container.remove();
       console.log('[Wespoke Widget] API: destroy()');
     },

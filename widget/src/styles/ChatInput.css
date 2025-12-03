@@ -1,0 +1,105 @@
+/* Chat Input Container */
+.wespoke-chat-input-container {
+  display: flex;
+  gap: 10px;
+  padding: 16px 28px; /* Match header horizontal padding */
+  background: hsl(0, 0%, 4%); /* Wespoke card background */
+  border-top: 1px solid hsl(0, 0%, 14%); /* Wespoke border */
+}
+
+/* Text Input */
+.wespoke-chat-input {
+  flex: 1;
+  padding: 12px 16px;
+  background: hsl(0, 0%, 6%); /* Slightly lighter than card */
+  border: 1.5px solid hsl(0, 0%, 14%);
+  border-radius: 12px;
+  color: hsl(0, 0%, 98%); /* Wespoke text primary */
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wespoke-chat-input:focus {
+  border-color: hsl(178, 30%, 43%); /* Wespoke primary teal */
+  background: hsl(0, 0%, 7%);
+  box-shadow: 0 0 0 3px hsla(178, 30%, 43%, 0.12);
+}
+
+.wespoke-chat-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.wespoke-chat-input::placeholder {
+  color: hsl(0, 0%, 45%); /* Wespoke muted text */
+}
+
+/* Send Button */
+.wespoke-chat-send-button {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient background for enabled state */
+.wespoke-chat-send-button:not(:disabled) {
+  background: linear-gradient(135deg, #4d8e8c 0%, #6db3b0 100%) !important;
+}
+
+.wespoke-chat-send-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(77, 142, 140, 0.3);
+  filter: brightness(1.1);
+}
+
+.wespoke-chat-send-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(77, 142, 140, 0.2);
+}
+
+.wespoke-chat-send-button:disabled {
+  background: hsl(0, 0%, 14%);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.wespoke-chat-send-button svg {
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .wespoke-chat-input-container {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .wespoke-chat-input {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .wespoke-chat-send-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .wespoke-chat-send-button svg {
+    width: 18px;
+    height: 18px;
+  }
+}

@@ -36,10 +36,10 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--wespoke-space-md);
+  padding: 20px 28px; /* Match header padding */
   display: flex;
   flex-direction: column;
-  gap: var(--wespoke-space-md);
+  gap: 16px;
 }
 
 /* Individual Message */
@@ -119,38 +119,41 @@
 
 .wespoke-message-text {
   background-color: var(--wespoke-bg-secondary);
-  padding: var(--wespoke-space-sm) var(--wespoke-space-md);
-  border-radius: var(--wespoke-radius-md);
-  font-size: var(--wespoke-text-sm);
-  line-height: 1.5;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
   color: var(--wespoke-text-primary);
   word-wrap: break-word;
   word-break: break-word;
+  max-width: 85%;
 }
 
-/* User message variant */
+/* User message variant - Wespoke teal gradient */
 .wespoke-message-user .wespoke-message-text {
-  background-color: var(--wespoke-primary);
+  background: linear-gradient(135deg, #4d8e8c 0%, #6db3b0 100%);
   color: white;
+  box-shadow: 0 2px 8px rgba(77, 142, 140, 0.2);
 }
 
-/* Assistant message variant */
+/* Assistant message variant - Dark with subtle border */
 .wespoke-message-assistant .wespoke-message-text {
-  background-color: var(--wespoke-bg-tertiary);
+  background-color: hsl(0, 0%, 6%);
+  border: 1px solid hsl(0, 0%, 14%);
 }
 
-/* Tool message variant */
+/* Tool message variant - Monospace with accent */
 .wespoke-message-tool .wespoke-message-text {
-  background-color: var(--wespoke-bg-secondary);
-  border: 1px solid var(--wespoke-border-primary);
-  font-family: monospace;
+  background-color: hsl(0, 0%, 5%);
+  border: 1px solid hsl(178, 30%, 20%);
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
   font-size: var(--wespoke-text-xs);
 }
 
-/* System message variant */
+/* System message variant - Warning accent */
 .wespoke-message-system .wespoke-message-text {
-  background-color: var(--wespoke-bg-secondary);
-  border-left: 3px solid var(--wespoke-warning);
+  background-color: hsl(0, 0%, 5%);
+  border-left: 3px solid hsl(38, 92%, 50%);
   font-style: italic;
 }
 

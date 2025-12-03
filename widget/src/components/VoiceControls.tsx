@@ -7,9 +7,9 @@ export interface VoiceControlsProps {
   isMuted: boolean;
   primaryColor: string;
   accentColor: string;
-  onStartCall: () => void;
-  onEndCall: () => void;
-  onToggleMute: () => void;
+  onStartCall: () => void | Promise<void>;
+  onEndCall: () => void | Promise<void>;
+  onToggleMute: () => boolean | Promise<boolean>;
   requireConsent?: boolean;
 }
 
@@ -79,7 +79,10 @@ export const VoiceControls: React.FC<VoiceControlsProps> = ({
         {!isConnected && !isConnecting && (
           <button
             className="wespoke-control-button wespoke-control-button-start"
-            onClick={onStartCall}
+            onClick={() => {
+              console.log('[VoiceControls] Start button clicked');
+              onStartCall();
+            }}
             disabled={isConnecting}
             aria-label="Aramayı Başlat"
             style={{ backgroundColor: primaryColor }}

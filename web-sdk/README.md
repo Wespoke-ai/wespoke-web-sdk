@@ -133,11 +133,11 @@ await wespoke.endCall();
 
 #### `toggleMute()`
 
-Toggle microphone mute state. Returns `true` if microphone is enabled, `false` if muted.
+Toggle microphone mute state. Returns `true` if microphone is muted, `false` if unmuted.
 
 ```typescript
-const enabled = await wespoke.toggleMute();
-console.log('Microphone enabled:', enabled);
+const muted = await wespoke.toggleMute();
+console.log('Microphone muted:', muted);
 ```
 
 #### `isMuted()`
