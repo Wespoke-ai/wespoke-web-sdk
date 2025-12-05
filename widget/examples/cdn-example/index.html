@@ -165,12 +165,12 @@
 
     const widget = WespokeWidget.create({
       // Your Wespoke API Key (replace with your actual key starting with pk_live_ or pk_test_)
-      apiKey: 'pk_live_your_api_key_here',
+      apiKey: 'pk_live_YOUR_API_KEY_HERE',
 
       // Your AI Assistant ID (replace with your actual assistant ID)
-      assistantId: 'your_assistant_id',
+      assistantId: 'YOUR_ASSISTANT_ID_HERE',
 
-      // API URL (default production URL)
+      // API URL (use production URL or local development)
       apiUrl: 'https://api.wespoke.ai',
 
       // Customization Options
@@ -186,6 +186,34 @@
 
       // Widget Mode: 'voice' (default), 'chat' (text only), or 'hybrid' (both)
       mode: 'chat',  // Uncomment and change to 'chat' to test chat mode
+
+      // Assistant Overrides (optional)
+      // Override assistant behavior per-widget without changing your assistant configuration
+      assistantOverrides: {
+        // Override temperature (creativity level: 0-2)
+        temperature: 0.8,
+
+        // Override max response tokens
+        maxResponseTokens: 500,
+
+        // Override system prompt with template variables
+        systemPrompt: 'Sen {{companyName}} için çalışan AI asistansın. Müşterilere {{productName}} hakkında yardımcı oluyorsun.',
+
+        // Override first message with template variables
+        firstMessage: 'Merhaba! {{companyName}} AI asistanınız olarak size nasıl yardımcı olabilirim?',
+
+        // Template variable values (optional)
+        // These will replace {{variableName}} placeholders in systemPrompt and firstMessage
+        variableValues: {
+          companyName: 'Wespoke',
+          productName: 'AI Sesli Asistan',
+          supportEmail: 'support@wespoke.ai'
+        },
+
+        // Other overrides
+        recordingEnabled: true,
+        endCallAfterSilence: 30  // seconds
+      }
     });
 
     console.log('Wespoke Widget initialized:', widget);

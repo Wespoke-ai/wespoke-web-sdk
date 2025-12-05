@@ -41,6 +41,7 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
   private chatAbortController: AbortController | null = null;
   private pollInterval: NodeJS.Timeout | null = null;
   private seenMessageIds: Set<string> = new Set();
+  private completedMessageIds: Set<string> = new Set();
   private shouldEndChatAfterStart: boolean = false;
 
   constructor(config: WespokeConfig) {
@@ -79,6 +80,7 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
 
     // Clear seen messages for new call
     this.seenMessageIds.clear();
+    this.completedMessageIds.clear();
 
     try {
       // 1. Fetch token from API
@@ -179,6 +181,7 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
 
       this.currentCallId = null;
       this.seenMessageIds.clear();
+      this.completedMessageIds.clear();
       this.setState(CallState.DISCONNECTED);
       this.log('Call ended');
     } catch (error) {
@@ -366,6 +369,7 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
 
     this.setState(CallState.CONNECTING);
     this.seenMessageIds.clear();
+    this.completedMessageIds.clear();
 
     // Create abort controller for this chat session
     this.chatAbortController = new AbortController();
@@ -375,16 +379,23 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
       this.log('Starting chat session...');
       const url = `${this.config.apiUrl}/api/v1/embed/chat`;
 
+      const requestBody: any = {
+        assistantId,
+        metadata: options.metadata || {}
+      };
+
+      // Include assistantOverrides if provided
+      if (options.assistantOverrides) {
+        requestBody.assistantOverrides = options.assistantOverrides;
+      }
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.config.apiKey}`
         },
-        body: JSON.stringify({
-          assistantId,
-          metadata: options.metadata || {}
-        }),
+        body: JSON.stringify(requestBody),
         signal: this.chatAbortController.signal
       });
 
@@ -412,7 +423,8 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
         this.log('Chat session start aborted');
         this.setState(CallState.IDLE);
         this.emit('disconnected', 'Chat session start aborted');
-        return;
+        // Throw so callers know the operation was aborted
+        throw new WespokeError('Chat session start was aborted', 'CHAT_START_ABORTED');
       }
 
       this.setState(CallState.IDLE);
@@ -521,6 +533,7 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
 
       this.currentChatId = null;
       this.seenMessageIds.clear();
+      this.completedMessageIds.clear();
       this.shouldEndChatAfterStart = false;
       this.setState(CallState.DISCONNECTED);
       this.emit('disconnected', 'Chat session ended');
@@ -531,6 +544,7 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
       this.currentChatId = null;
       this.shouldEndChatAfterStart = false;
       this.seenMessageIds.clear();
+      this.completedMessageIds.clear();
       // Reset to DISCONNECTED to allow new calls/chats
       this.setState(CallState.DISCONNECTED);
       this.emit('disconnected', 'Chat session ended with error');
@@ -566,16 +580,23 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
   private async fetchToken(assistantId: string, options: CallOptions): Promise<TokenResponse['data']> {
     const url = `${this.config.apiUrl}/api/v1/embed/token`;
 
+    const requestBody: any = {
+      assistantId,
+      metadata: options.metadata || {}
+    };
+
+    // Include assistantOverrides if provided
+    if (options.assistantOverrides) {
+      requestBody.assistantOverrides = options.assistantOverrides;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.config.apiKey}`
       },
-      body: JSON.stringify({
-        assistantId,
-        metadata: options.metadata || {}
-      })
+      body: JSON.stringify(requestBody)
     });
 
     const data = await response.json();
@@ -889,29 +910,61 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
         case 'message':
         case 'conversation_item':
           // Deduplicate streaming messages by ID
-          // For incomplete/streaming messages: skip duplicates
-          // For complete messages: allow through to update with final content
-          if (data.id && this.seenMessageIds.has(data.id) && !data.isComplete) {
-            this.log('Skipping duplicate incomplete message:', data.id);
+          // Strategy:
+          // - Track incomplete chunks in seenMessageIds (mark on first chunk)
+          // - Track completed messages in completedMessageIds (mark when isComplete=true)
+          // - Skip duplicate incomplete chunks (seen but not completed)
+          // - Skip duplicate completed messages (already in completedMessageIds)
+          // - Allow polling fallback to recover complete messages if data channel drops mid-stream
+          const messageId = data.id;
+          const isComplete = data.isComplete;
+
+          if (!messageId) {
+            // No ID, can't deduplicate - just emit
+            this.emit('message', {
+              id: messageId,
+              role: data.role,
+              content: data.content,
+              timestamp: data.timestamp,
+              isComplete: isComplete,
+              isFirstChunk: data.isFirstChunk,
+              isStreaming: data.isStreaming
+            } as ConversationMessage);
             return;
+          }
+
+          // Check if this message has already been completed
+          if (this.completedMessageIds.has(messageId)) {
+            this.log('Skipping duplicate completed message:', messageId);
+            return;
+          }
+
+          // Check if this is an incomplete duplicate chunk (must check BEFORE adding to seenMessageIds)
+          const alreadySeen = this.seenMessageIds.has(messageId);
+          if (alreadySeen && !isComplete) {
+            this.log('Skipping duplicate incomplete chunk:', messageId);
+            return;
+          }
+
+          // Mark as seen BEFORE emitting (so subsequent chunks can be filtered)
+          if (!alreadySeen) {
+            this.seenMessageIds.add(messageId);
           }
 
           // Emit the message
           this.emit('message', {
-            id: data.id,
+            id: messageId,
             role: data.role,
             content: data.content,
             timestamp: data.timestamp,
-            isComplete: data.isComplete,
+            isComplete: isComplete,
             isFirstChunk: data.isFirstChunk,
             isStreaming: data.isStreaming
           } as ConversationMessage);
 
-          // Add to seen set after emitting
-          // For streaming: mark after first chunk so final update can come through
-          // For complete: mark to prevent polling fallback from re-emitting
-          if (data.id && data.isComplete) {
-            this.seenMessageIds.add(data.id);
+          // If complete, also mark in completedMessageIds to prevent future duplicates
+          if (isComplete) {
+            this.completedMessageIds.add(messageId);
           }
           break;
 
@@ -973,13 +1026,33 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
 
           this.log(`Polling found ${messages.length} messages`);
 
-          // Emit messages that we haven't seen yet
+          // Emit messages that haven't been completed yet
+          // The polling fallback can recover complete messages if data channel drops mid-stream
           messages.forEach((message) => {
-            if (message.id && !this.seenMessageIds.has(message.id)) {
-              this.seenMessageIds.add(message.id);
-              this.log(`Emitting new message: ${message.role} - ${message.content?.substring(0, 50)}`);
+            if (!message.id) {
+              // No ID, emit anyway
+              this.log(`Emitting message without ID: ${message.role} - ${message.content?.substring(0, 50)}`);
               this.emit('message', message);
+              return;
             }
+
+            // Skip if already completed via data channel
+            if (this.completedMessageIds.has(message.id)) {
+              return;
+            }
+
+            // If not completed, emit it (this handles both new messages and data channel recovery)
+            if (!this.seenMessageIds.has(message.id)) {
+              this.seenMessageIds.add(message.id);
+            }
+
+            // Mark as completed if the polled message is complete
+            if (message.isComplete) {
+              this.completedMessageIds.add(message.id);
+            }
+
+            this.log(`Emitting message from polling: ${message.role} - ${message.content?.substring(0, 50)}`);
+            this.emit('message', message);
           });
         } catch (error) {
           this.log('Error polling messages:', error);

@@ -54,6 +54,9 @@ Or use via CDN:
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
+<!-- Wespoke Web SDK (required dependency) -->
+<script src="https://unpkg.com/@wespoke/web-sdk/dist/wespoke.umd.js"></script>
+
 <!-- Wespoke Widget -->
 <link rel="stylesheet" href="https://unpkg.com/@wespoke/widget/dist/wespoke-widget.umd.css">
 <script src="https://unpkg.com/@wespoke/widget/dist/wespoke-widget.umd.js"></script>
@@ -81,6 +84,9 @@ Add a complete voice interface with one script tag:
   <!-- React 18 -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Wespoke Web SDK (required dependency) -->
+  <script src="https://unpkg.com/@wespoke/web-sdk/dist/wespoke.umd.js"></script>
 
   <!-- Wespoke Widget -->
   <link rel="stylesheet" href="https://unpkg.com/@wespoke/widget/dist/wespoke-widget.umd.css">

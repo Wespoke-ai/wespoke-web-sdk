@@ -22,7 +22,8 @@ export type {
   ChatSessionResponse,
   APIErrorResponse,
   MessageRole,
-  ToolEventType
+  ToolEventType,
+  AssistantOverrides
 } from './types';
 
 export { CallState } from './types';

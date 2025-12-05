@@ -39,6 +39,56 @@ export interface WespokeConfig {
 }
 
 /**
+ * Assistant Overrides
+ * Allows per-call/session customization of assistant behavior without modifying the base assistant configuration
+ */
+export interface AssistantOverrides {
+  /**
+   * Dynamic variables for template substitution in prompts
+   * Example: { userName: 'Alice', userTier: 'Premium' }
+   * These replace {{variableName}} placeholders in system prompts and first messages
+   */
+  variableValues?: Record<string, string | number | boolean>;
+
+  /**
+   * Override the assistant's first message
+   * Supports template variables: "Hi {{userName}}, welcome!"
+   */
+  firstMessage?: string;
+
+  /**
+   * Override the system prompt
+   * Supports template variables
+   */
+  systemPrompt?: string;
+
+  /**
+   * Override LLM temperature (0.0 to 1.0)
+   */
+  temperature?: number;
+
+  /**
+   * Override max response tokens
+   */
+  maxResponseTokens?: number;
+
+  /**
+   * Override recording enabled setting
+   */
+  recordingEnabled?: boolean;
+
+  /**
+   * Override end call after silence (in seconds)
+   */
+  endCallAfterSilence?: number;
+
+  /**
+   * Additional override fields (for future extensibility)
+   */
+  [key: string]: any;
+}
+
+/**
  * Call Options
  */
 export interface CallOptions {
@@ -53,6 +103,12 @@ export interface CallOptions {
     /** Custom data object */
     customData?: Record<string, any>;
   };
+
+  /**
+   * Optional assistant overrides
+   * Allows per-call customization without modifying the base assistant
+   */
+  assistantOverrides?: AssistantOverrides;
 }
 
 /**

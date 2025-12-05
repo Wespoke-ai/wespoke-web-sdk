@@ -2,6 +2,11 @@
  * Type definitions for Wespoke Web Widget
  */
 
+import type { AssistantOverrides } from '@wespoke/web-sdk';
+
+// Re-export AssistantOverrides from SDK for convenience
+export type { AssistantOverrides } from '@wespoke/web-sdk';
+
 /**
  * Widget position on the page
  */
@@ -95,6 +100,9 @@ export interface WespokeWidgetConfig {
 
   /** Optional: Metadata to pass to API */
   metadata?: Record<string, any>;
+
+  /** Optional: Assistant overrides for per-widget customization */
+  assistantOverrides?: AssistantOverrides;
 
   /** Optional: Locale/Language (default: 'tr') */
   locale?: WidgetLocale;

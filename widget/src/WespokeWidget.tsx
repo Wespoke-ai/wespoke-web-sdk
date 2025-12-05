@@ -29,6 +29,7 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
     buttonText,
     placeholderText,
     metadata = {},
+    assistantOverrides,
     locale: _locale = 'tr', // Prefix with _ to indicate intentionally unused for now
     debug = false,
     zIndex = 9999,
@@ -53,11 +54,28 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
   const sdkRef = useRef<Wespoke | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const chatStartAttemptedRef = useRef<boolean>(false);
+  const isOpenRef = useRef<boolean>(isOpen);
+  const chatStateRef = useRef<WidgetState>(chatState);
+  const voiceStateRef = useRef<WidgetState>(voiceState);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Set CSS custom property for z-index
   useEffect(() => {
     document.documentElement.style.setProperty('--wespoke-widget-z-index', zIndex.toString());
   }, [zIndex]);
+
+  // Keep refs in sync with state to avoid stale closure values in setTimeout
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  useEffect(() => {
+    chatStateRef.current = chatState;
+  }, [chatState]);
+
+  useEffect(() => {
+    voiceStateRef.current = voiceState;
+  }, [voiceState]);
 
   // Handle state changes
   useEffect(() => {
@@ -99,7 +117,23 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
         content: message.content,
         timestamp: message.timestamp || Date.now()
       };
-      setMessages(prev => [...prev, widgetMessage]);
+
+      // Update or append message based on ID
+      // The SDK emits messages twice for streaming: first chunk + final complete
+      // We need to replace the existing message when the final version arrives
+      setMessages(prev => {
+        const existingIndex = prev.findIndex(m => m.id === widgetMessage.id);
+        if (existingIndex !== -1) {
+          // Replace existing message with updated content
+          const updated = [...prev];
+          updated[existingIndex] = widgetMessage;
+          return updated;
+        } else {
+          // Append new message
+          return [...prev, widgetMessage];
+        }
+      });
+
       onMessage?.(widgetMessage);
     });
 
@@ -182,6 +216,13 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
     } else {
       // Closing: end any active sessions (voice or chat)
       chatStartAttemptedRef.current = false;
+
+      // Cancel any pending retry timeout to prevent background retry after widget closed
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+
       if (sdkRef.current) {
         // In hybrid mode, need to end both voice and chat if active
         if (mode === 'hybrid') {
@@ -267,7 +308,7 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
       }
 
       // Start the call using the SDK
-      await sdkRef.current.startCall(assistantId, { metadata });
+      await sdkRef.current.startCall(assistantId, { metadata, assistantOverrides });
 
       setVoiceState('connected');
       setState('connected');
@@ -290,7 +331,7 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
         console.error('[Wespoke Widget] Failed to start call:', error);
       }
     }
-  }, [mode, chatState, assistantId, metadata, onCallStart, onError, debug]);
+  }, [mode, chatState, assistantId, metadata, assistantOverrides, onCallStart, onError, debug]);
 
   const handleEndCall = useCallback(async () => {
     if (!sdkRef.current) {
@@ -390,7 +431,7 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
       }
 
       // Start chat session using the SDK
-      await sdkRef.current.startChatSession(assistantId, { metadata });
+      await sdkRef.current.startChatSession(assistantId, { metadata, assistantOverrides });
 
       setChatState('connected');
       // In hybrid mode, voice might already be running, don't override
@@ -403,6 +444,26 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
         console.log('[Wespoke Widget] Chat session started successfully');
       }
     } catch (error) {
+      // Check if this was an intentional abort (user closed widget during connection)
+      const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
+      const isAbort = errorCode === 'CHAT_START_ABORTED';
+      const isCallInProgress = errorCode === 'CALL_IN_PROGRESS';
+
+      if (isAbort) {
+        // Treat abort as normal close - don't fire error callback or retry
+        if (debug) {
+          console.log('[Wespoke Widget] Chat session start aborted (user closed widget)');
+        }
+        setChatState('idle');
+        if (mode !== 'hybrid' || voiceState === 'idle') {
+          setState('idle');
+        }
+        // Reset flag to allow future starts
+        chatStartAttemptedRef.current = false;
+        return;
+      }
+
+      // Real failure - fire error callback
       const err: WidgetError = {
         code: 'CHAT_START_FAILED',
         message: error instanceof Error ? error.message : 'Failed to start chat session',
@@ -413,14 +474,42 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
       if (mode !== 'hybrid' || voiceState === 'idle') {
         setState('idle');
       }
-      // Do NOT reset flag - keep it true to prevent infinite retry loop
-      // The flag will only be reset when user closes/reopens widget or ends session
+
+      // Don't retry if a voice call is active (CALL_IN_PROGRESS error)
+      // Retrying would just hammer the API endpoint while the call is active
+      if (isCallInProgress) {
+        if (debug) {
+          console.log('[Wespoke Widget] Skipping chat retry - voice call is active');
+        }
+        chatStartAttemptedRef.current = false;
+        return;
+      }
+
+      // Reset flag and retry after a delay to allow recovery from transient failures
+      // This prevents rapid retry spam while still allowing automatic recovery
+      // Use refs to read latest state values (not stale closure values)
+      retryTimeoutRef.current = setTimeout(() => {
+        chatStartAttemptedRef.current = false;
+        // Read latest values from refs to avoid stale closure
+        // Only retry if widget is still open, in chat/hybrid mode, chat is idle, AND voice call is not active
+        if (
+          isOpenRef.current &&
+          (mode === 'chat' || mode === 'hybrid') &&
+          chatStateRef.current === 'idle' &&
+          voiceStateRef.current === 'idle'
+        ) {
+          if (debug) {
+            console.log('[Wespoke Widget] Retrying chat session after failure');
+          }
+          handleStartChatSession();
+        }
+      }, 2000); // 2 second delay before retry
 
       if (debug) {
         console.error('[Wespoke Widget] Failed to start chat session:', error);
       }
     }
-  }, [mode, voiceState, assistantId, metadata, onCallStart, onError, debug]);
+  }, [mode, voiceState, assistantId, metadata, assistantOverrides, onCallStart, onError, debug, isOpen, chatState]);
 
   const handleSendChatMessage = useCallback(async (message: string) => {
     if (!sdkRef.current) {
@@ -517,6 +606,12 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
     setIsOpen(false);
     // Reset chat attempt flag so reopening can trigger a fresh start
     chatStartAttemptedRef.current = false;
+
+    // Cancel any pending retry timeout to prevent background retry after widget closed
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
 
     // End any active sessions when closing
     if (mode === 'hybrid') {
