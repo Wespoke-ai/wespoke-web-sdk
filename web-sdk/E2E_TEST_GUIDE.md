@@ -29,10 +29,7 @@ You'll need to obtain these from the dashboard:
 ## Step 1: Get API Key and Assistant ID
 
 ### Option A: Use Existing Test Key
-According to the completion report, there's an existing test key:
-```
-pk_test_1AEWcjp7JBpEFJVgl14tEmYKMNsqCjOyUOLQIdhJyAS
-```
+If you have an existing test key, use it here. Otherwise, create a new one (Option B below).
 
 ### Option B: Create New Key
 1. Navigate to: http://localhost:3000/dashboard/embedding
@@ -56,7 +53,7 @@ pk_test_1AEWcjp7JBpEFJVgl14tEmYKMNsqCjOyUOLQIdhJyAS
 1. Open http://localhost:8081 in your browser
 2. The application should load with localStorage persisting your credentials
 3. Enter your credentials:
-   - **API Key**: `pk_test_1AEWcjp7JBpEFJVgl14tEmYKMNsqCjOyUOLQIdhJyAS` (or your new key)
+   - **API Key**: `pk_test_YOUR_API_KEY_HERE` (use your test key)
    - **Assistant ID**: [Your assistant ID]
    - **API URL**: Leave blank (uses default: https://api.wespoke.com.tr)
    - **Debug Mode**: Check this to see detailed console logs
