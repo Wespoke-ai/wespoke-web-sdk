@@ -1,6 +1,6 @@
 {
   "name": "@wespoke/widget",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pre-built web widget for Wespoke AI voice assistants - add AI chat to your website with a single line of code",
   "main": "dist/wespoke-widget.cjs.js",
   "module": "dist/wespoke-widget.esm.js",
@@ -45,7 +45,7 @@
   },
   "homepage": "https://wespoke.ai",
   "dependencies": {
-    "@wespoke/web-sdk": "^0.1.5"
+    "@wespoke/web-sdk": "^0.2.0"
   },
   "peerDependencies": {
     "react": "^18.0.0",
