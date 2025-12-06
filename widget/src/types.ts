@@ -23,6 +23,11 @@ export type WidgetTheme = 'light' | 'dark' | 'auto';
 export type WidgetSize = 'compact' | 'medium' | 'full';
 
 /**
+ * Border radius style
+ */
+export type BorderRadius = 'none' | 'small' | 'medium' | 'large';
+
+/**
  * Widget mode
  */
 export type WidgetMode = 'voice' | 'chat' | 'hybrid';
@@ -76,6 +81,18 @@ export interface WespokeWidgetConfig {
 
   /** Optional: Accent color (hex) (default: '#6db3b0') */
   accentColor?: string;
+
+  /** Optional: Border radius style (default: 'medium') */
+  borderRadius?: BorderRadius;
+
+  /** Optional: Base background color for widget (hex) */
+  baseColor?: string;
+
+  /** Optional: Floating button background color (hex) */
+  buttonBaseColor?: string;
+
+  /** Optional: Floating button text/icon color (hex) */
+  buttonAccentColor?: string;
 
   /** Optional: Widget size (default: 'medium') */
   size?: WidgetSize;

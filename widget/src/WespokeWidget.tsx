@@ -21,6 +21,10 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
     theme = 'dark',
     primaryColor = '#4d8e8c',
     accentColor = '#6db3b0',
+    borderRadius = 'medium',
+    baseColor,
+    buttonBaseColor,
+    buttonAccentColor,
     size = 'medium',
     mode = 'voice',
     autoOpen = false,
@@ -59,10 +63,33 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
   const voiceStateRef = useRef<WidgetState>(voiceState);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Set CSS custom property for z-index
+  // Set CSS custom properties for styling
   useEffect(() => {
-    document.documentElement.style.setProperty('--wespoke-widget-z-index', zIndex.toString());
-  }, [zIndex]);
+    const root = document.documentElement;
+    root.style.setProperty('--wespoke-widget-z-index', zIndex.toString());
+
+    // Border radius mapping
+    const borderRadiusMap = {
+      'none': '0px',
+      'small': '8px',
+      'medium': '16px',
+      'large': '24px'
+    };
+    root.style.setProperty('--wespoke-border-radius', borderRadiusMap[borderRadius]);
+
+    // Base color for widget background
+    if (baseColor) {
+      root.style.setProperty('--wespoke-base-color', baseColor);
+    }
+
+    // Button colors
+    if (buttonBaseColor) {
+      root.style.setProperty('--wespoke-button-base-color', buttonBaseColor);
+    }
+    if (buttonAccentColor) {
+      root.style.setProperty('--wespoke-button-accent-color', buttonAccentColor);
+    }
+  }, [zIndex, borderRadius, baseColor, buttonBaseColor, buttonAccentColor]);
 
   // Keep refs in sync with state to avoid stale closure values in setTimeout
   useEffect(() => {
@@ -446,8 +473,10 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
     } catch (error) {
       // Check if this was an intentional abort (user closed widget during connection)
       const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : null;
+      const errorName = error && typeof error === 'object' && 'name' in error ? error.name : null;
       const isAbort = errorCode === 'CHAT_START_ABORTED';
       const isCallInProgress = errorCode === 'CALL_IN_PROGRESS';
+      const isAuthError = errorCode === 'AUTHENTICATION_ERROR' || errorName === 'AuthenticationError';
 
       if (isAbort) {
         // Treat abort as normal close - don't fire error callback or retry
@@ -475,11 +504,11 @@ export const WespokeWidget: React.FC<WespokeWidgetConfig> = (config) => {
         setState('idle');
       }
 
-      // Don't retry if a voice call is active (CALL_IN_PROGRESS error)
-      // Retrying would just hammer the API endpoint while the call is active
-      if (isCallInProgress) {
+      // Don't retry permanent errors (auth failures, voice call active)
+      // Retrying would just hammer the API endpoint with no chance of success
+      if (isCallInProgress || isAuthError) {
         if (debug) {
-          console.log('[Wespoke Widget] Skipping chat retry - voice call is active');
+          console.log(`[Wespoke Widget] Skipping chat retry - ${isAuthError ? 'auth error' : 'voice call is active'}`);
         }
         chatStartAttemptedRef.current = false;
         return;

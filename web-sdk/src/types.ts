@@ -124,6 +124,12 @@ export interface ChatSessionResponse {
       version: number;
     };
     startedAt: Date;
+    greetingMessage?: {
+      id: string;
+      role: MessageRole;
+      content: string;
+      timestamp: number;
+    };
   };
 }
 

@@ -28,6 +28,10 @@ export const FloatingButton: React.FC<FloatingButtonProps> = ({
   const stateClass = isOpen ? 'wespoke-fab-open' : '';
   const activeClass = isActive ? 'wespoke-fab-active' : '';
 
+  // Use buttonBaseColor from CSS var if available, otherwise fall back to primaryColor
+  const buttonBaseColor = getComputedStyle(document.documentElement).getPropertyValue('--wespoke-button-base-color').trim();
+  const useCustomButtonColors = !!buttonBaseColor;
+
   return (
     <button
       className={`wespoke-fab ${positionClass} ${stateClass} ${activeClass}`}
@@ -35,7 +39,7 @@ export const FloatingButton: React.FC<FloatingButtonProps> = ({
       aria-label={isOpen ? 'Asistanı Kapat' : buttonText}
       title={isOpen ? 'Asistanı Kapat' : buttonText}
       style={{
-        backgroundColor: primaryColor,
+        backgroundColor: useCustomButtonColors ? `var(--wespoke-button-base-color)` : primaryColor,
         borderColor: accentColor
       }}
     >

@@ -36,10 +36,10 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 28px; /* Match header padding */
+  padding: 24px 28px; /* Increased top/bottom padding for more breathing room */
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px; /* Increased gap between messages */
 }
 
 /* Individual Message */
@@ -119,10 +119,10 @@
 
 .wespoke-message-text {
   background-color: var(--wespoke-bg-secondary);
-  padding: 12px 16px;
+  padding: 14px 18px; /* Increased padding for more spacious bubbles */
   border-radius: 16px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7; /* Increased line height for better readability */
   color: var(--wespoke-text-primary);
   word-wrap: break-word;
   word-break: break-word;
@@ -134,6 +134,7 @@
   background: linear-gradient(135deg, #4d8e8c 0%, #6db3b0 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(77, 142, 140, 0.2);
+  padding: 16px 20px; /* Extra padding for user messages to prevent text touching edges */
 }
 
 /* Assistant message variant - Dark with subtle border */

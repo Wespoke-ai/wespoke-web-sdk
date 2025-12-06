@@ -88,7 +88,7 @@
   position: relative;
   width: 24px;
   height: 24px;
-  color: white;
+  color: var(--wespoke-button-accent-color, white);
   transition: transform 0.3s ease;
 }
 

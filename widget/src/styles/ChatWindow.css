@@ -20,8 +20,8 @@
   position: fixed;
   display: flex;
   flex-direction: column;
-  background-color: var(--wespoke-bg-primary);
-  border-radius: var(--wespoke-radius-xl);
+  background-color: var(--wespoke-base-color, var(--wespoke-bg-primary));
+  border-radius: var(--wespoke-border-radius, var(--wespoke-radius-xl));
   box-shadow: var(--wespoke-shadow-xl);
   z-index: var(--wespoke-widget-z-index);
   animation: wespoke-chat-slide-in var(--wespoke-transition-normal);

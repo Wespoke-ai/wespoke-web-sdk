@@ -1,10 +1,11 @@
 # Wespoke Web SDK
 
-Official JavaScript SDK for embedding Wespoke AI voice assistants in any website.
+Official JavaScript SDK for embedding Wespoke AI voice assistants and chat experiences in any website.
 
 ## Features
 
 - 🎙️ **Real-time Voice Conversations**: Connect to AI voice assistants powered by LiveKit
+- 💬 **Text Chat Sessions**: Start chat-only sessions with the same assistants
 - 🎯 **Simple API**: Start a call with just 2 lines of code
 - 📦 **Multiple Formats**: UMD, ESM, and CommonJS builds
 - 🔒 **Secure**: API key authentication with domain whitelisting
@@ -109,6 +110,36 @@ interface WespokeConfig {
 
 ### Methods
 
+#### `startChatSession(assistantId, options?)`
+
+Start a text chat session with an assistant (no microphone/audio required).
+
+```typescript
+await wespoke.startChatSession('assistant-id', {
+  metadata: { userId: 'user-123' },
+  assistantOverrides: {
+    systemPrompt: 'You are a concise support bot.',
+    temperature: 0.2
+  }
+});
+```
+
+#### `sendChatMessage(content)`
+
+Send a message during an active chat session. Responses stream through the `message` event.
+
+```typescript
+await wespoke.sendChatMessage('How can I reset my password?');
+```
+
+#### `endChatSession()`
+
+End the current chat session.
+
+```typescript
+await wespoke.endChatSession();
+```
+
 #### `startCall(assistantId, options?)`
 
 Start a voice call with an assistant.
@@ -119,9 +150,18 @@ await wespoke.startCall('assistant-id', {
     userId: 'user-123',
     sessionId: 'session-xyz',
     customData: { source: 'website' }
+  },
+  assistantOverrides: {
+    systemPrompt: 'You are a friendly concierge for ACME Hotels.',
+    temperature: 0.4,
+    variableValues: { guestName: 'Sam' }
   }
 });
 ```
+
+**Call/Chat options**
+- `metadata`: Custom data passed through to your assistant for analytics or routing.
+- `assistantOverrides`: Per-session prompt/behavior tweaks (e.g., `systemPrompt`, `firstMessage`, `temperature`, `maxResponseTokens`, `variableValues`). When provided, overrides are forwarded for both voice calls and chat sessions.
 
 #### `endCall()`
 
@@ -212,6 +252,7 @@ wespoke.on('connected', () => {
     console.log(`${message.role}: ${message.content}`);
   });
   ```
+  Messages may stream in multiple chunks; use `message.isComplete`/`message.isFirstChunk` to detect streaming progress.
 
 - **`transcription`**: Real-time transcription event
 

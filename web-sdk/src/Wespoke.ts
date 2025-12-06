@@ -417,6 +417,25 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
       this.setState(CallState.CONNECTED);
       this.log(`Chat session started. Chat ID: ${this.currentChatId}`);
       this.emit('connected');
+
+      // If backend returned a greeting message, emit it immediately
+      if (data.data.greetingMessage) {
+        const greetingMsg: ConversationMessage = {
+          id: data.data.greetingMessage.id,
+          role: data.data.greetingMessage.role,
+          content: data.data.greetingMessage.content,
+          timestamp: data.data.greetingMessage.timestamp,
+          isComplete: true
+        };
+
+        // Mark as seen to prevent duplicates
+        this.seenMessageIds.add(greetingMsg.id);
+        this.completedMessageIds.add(greetingMsg.id);
+
+        // Emit to widget
+        this.log('Emitting greeting message:', greetingMsg.content);
+        this.emit('message', greetingMsg);
+      }
     } catch (error) {
       // Check if it was an abort
       if (error instanceof Error && error.name === 'AbortError') {

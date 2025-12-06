@@ -1,6 +1,6 @@
 # Wespoke Web Widget
 
-Add a complete AI voice assistant to your website with a single line of code.
+Add a complete AI voice or chat assistant to your website with a single line of code.
 
 ## Overview
 
@@ -8,7 +8,7 @@ The Wespoke Web Widget is a pre-built, drop-in UI component that provides instan
 
 ## Features
 
-- **Voice Conversations** - Real-time AI voice calls with your assistant
+- **Voice + Chat Modes** - Run voice calls, text chat, or hybrid experiences
 - **Message Transcript** - See the conversation history
 - **Fully Customizable** - Match your brand with custom colors, position, and styling
 - **Mobile Responsive** - Works perfectly on desktop and mobile
@@ -92,6 +92,7 @@ yarn add @wespoke/widget react react-dom
       theme: 'dark',
       primaryColor: '#4d8e8c',
       accentColor: '#6db3b0',
+      mode: 'chat', // 'voice' | 'chat' | 'hybrid'
       buttonText: 'AI Asistan',
       showTranscript: true,
       requireConsent: true,
@@ -137,6 +138,11 @@ function App() {
         accentColor="#6db3b0"
         showTranscript={true}
         requireConsent={true}
+        mode="hybrid" // 'voice' | 'chat' | 'hybrid' (default: 'voice')
+        assistantOverrides={{
+          systemPrompt: 'You are a friendly concierge.',
+          temperature: 0.4
+        }}
         onCallStart={handleCallStart}
         onMessage={handleMessage}
         onError={handleError}
@@ -175,6 +181,7 @@ function App() {
 ```typescript
 {
   autoOpen?: boolean;          // Auto-expand widget on page load (default: false)
+  mode?: 'voice' | 'chat' | 'hybrid'; // Interaction mode (default: 'voice')
   showTranscript?: boolean;    // Display message history (default: true)
   requireConsent?: boolean;    // Show mic permission prompt (default: true)
   apiUrl?: string;             // API endpoint (default: 'https://api.wespoke.ai')
@@ -196,6 +203,14 @@ function App() {
 ```typescript
 {
   metadata?: Record<string, any>;  // Custom metadata to pass to assistant
+  assistantOverrides?: {           // Per-session prompt/behavior overrides (passed to SDK)
+    systemPrompt?: string;
+    firstMessage?: string;
+    temperature?: number;
+    maxResponseTokens?: number;
+    variableValues?: Record<string, string | number | boolean>;
+    [key: string]: any;
+  };
   locale?: 'tr' | 'en';            // Language locale (default: 'tr')
 }
 ```
