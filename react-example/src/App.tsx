@@ -40,7 +40,11 @@ function App() {
   }, [assistantId]);
 
   useEffect(() => {
-    if (apiUrl) localStorage.setItem(STORAGE_KEYS.API_URL, apiUrl);
+    if (apiUrl) {
+      localStorage.setItem(STORAGE_KEYS.API_URL, apiUrl);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.API_URL);
+    }
   }, [apiUrl]);
 
   useEffect(() => {

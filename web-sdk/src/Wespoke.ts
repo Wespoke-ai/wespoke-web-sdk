@@ -59,7 +59,7 @@ export class Wespoke extends EventEmitter<WespokeEvents> {
     // Set defaults
     this.config = {
       apiKey: config.apiKey,
-      apiUrl: config.apiUrl || 'https://api.wespoke.com.tr',
+      apiUrl: config.apiUrl !== undefined ? config.apiUrl : 'https://api.wespoke.ai',
       debug: config.debug || false,
       maxRetryAttempts: config.maxRetryAttempts || 3,
       retryDelay: config.retryDelay || 2000
